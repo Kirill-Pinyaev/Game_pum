@@ -5,10 +5,10 @@ import socket
 from random import randint
 
 # Константы, задающие адрес и порт сервера, максимальную длину очереди и ожидаемое кол-во клиентов
-SERVER_ADDRESS = 'localhost'
-SERVER_PORT = 6666
+SERVER_ADDRESS = '192.168.1.68'
+SERVER_PORT = 8008
 CLIENTS_QUEUE_LEN = 15
-PLAYERS_COUNT = 1
+PLAYERS_COUNT = 2
 
 # Переменная, в которой хранятся доходности озера, соответствующие разным уровням загрязнения
 lake = [
@@ -69,6 +69,7 @@ def start_game():
 def connect_new_player():
     global clients, count_klient, conn, inputs
     new_conn, addr = conn.accept()
+    print('')
     if status == 1:
         new_conn.send(b"Sorry, the game has been started")
         new_conn.close()
@@ -152,7 +153,7 @@ def finish_game():
 
 
 def send_game_info():
-    info = f'month number: {month} \n state of the lake: {lake[pos_lake][0], lake[pos_lake][1]} \n player balances: {kash}'
+    info = f'month number: {month} \n state of the lake: {lake[pos_lake][0], lake[pos_lake][1]} \n player balances: {kash} \n choose a strategy'
     broadcast(info)
 
     # Функция, реализующая "шаг игры"
@@ -229,7 +230,7 @@ def handle_player_msg(conn):
 
 
 sock = socket.socket()
-sock.bind(('192.168.1.68', 8008))
+sock.bind((SERVER_ADDRESS, SERVER_PORT))
 sock.listen(5)
 sock.setblocking(False)
 inputs = [sock]
