@@ -8,7 +8,7 @@ from random import randint
 SERVER_ADDRESS = '192.168.1.68'
 SERVER_PORT = 8008
 CLIENTS_QUEUE_LEN = 15
-PLAYERS_COUNT = 2
+PLAYERS_COUNT = 1
 
 # Переменная, в которой хранятся доходности озера, соответствующие разным уровням загрязнения
 lake = [
@@ -38,6 +38,7 @@ count_klient = 0
 pos_lake = 68
 strateg = {}
 kash = {}
+addres = []
 
 # 4. Переменная сервера
 
@@ -67,7 +68,7 @@ def start_game():
 # 3. Нужно оповестить других игроков о подключении нового клиента.
 # 4. Если набралось необходимое количество игроков, нужно вызвать функцию, начинающую игру.
 def connect_new_player():
-    global clients, count_klient, conn, inputs
+    global clients, count_klient, conn, inputs, addres
     new_conn, addr = conn.accept()
     print('')
     if status == 1:
@@ -79,6 +80,7 @@ def connect_new_player():
     clients[new_conn] = addr
     kash[new_conn] = 0
     inputs.append(new_conn)
+    addres.append(addr)
     if count_klient == PLAYERS_COUNT:
         start_game()
 
@@ -91,27 +93,29 @@ def update_balances():
     zagr_lake = 0
     count_4 = 0
     count_5 = 0
+    print(strateg)
     for i in kash:
         for key, vale in strateg.items():
             if vale == 4:
                 count_4 += 1
             if vale == 5:
                 count_5 += 1
-        if strateg[i] == 1:
+        print(strateg[i])
+        if strateg[i] == '1':
             zagr_lake -= 1
             if count_4 == 0:
                 kash[i] += lake[pos_lake][0]
             else:
                 kash[i] -= 20
-        if strateg[i] == 2:
+        if strateg[i] == '2':
             kash[i] += lake[pos_lake][1]
             if count_5 != 0:
                 kash[i] += 10
-        if strateg[i] == 3:
+        if strateg[i] == '3':
             kash[i] += 8
-        if strateg[i] == 4:
+        if strateg[i] == '4':
             kash[i] -= 8 // count_4
-        if strateg[i] == 5:
+        if strateg[i] == '5':
             kash[i] -= 8 // count_5
     return zagr_lake
 
@@ -153,7 +157,13 @@ def finish_game():
 
 
 def send_game_info():
-    info = f'month number: {month} \n state of the lake: {lake[pos_lake][0], lake[pos_lake][1]} \n player balances: {kash} \n choose a strategy'
+    sp = []
+    slov = {}
+    for i in kash:
+        sp.append(kash[i])
+    for i in range(len(addres)):
+        slov[addres[i][0]] = sp[i]
+    info = f'month number: {month} \n state of the lake: {lake[pos_lake][0], lake[pos_lake][1]} \n player balances: {slov} \n choose a strategy'
     broadcast(info)
 
     # Функция, реализующая "шаг игры"
@@ -181,7 +191,8 @@ def game_step():
 
 # Функция, проверяющая, что все игроки выбрали стратегии в этом месяце
 def all_made_decision():
-    if strateg.keys() == PLAYERS_COUNT:
+    print(len(strateg.keys()))
+    if len(strateg.keys()) == PLAYERS_COUNT:
         return True
     return False
 
@@ -191,9 +202,13 @@ def all_made_decision():
 # 2. Закрываем его сокет
 # 3. Информируем об этом других клиентов
 def disconnect_client(conn):
+    global addres, clients, kash
     broadcast(f'the player {clients[conn]} left the game')
     conn.close()
-    clients.pop(conn)
+    kash.pop(conn)
+    a = clients.pop(conn)
+    b = addres.index(a)
+    addres.pop(b)
 
 
 # Функция, обрабатывающая сообщение, которое прислал нам клиент.
@@ -209,6 +224,7 @@ def handle_player_msg(conn):
     global strateg
     try:
         msg = conn.recv(1024).decode()
+        msg = str(msg)
     except Exception as err:
         print(err)
         disconnect_client(conn)
@@ -221,7 +237,7 @@ def handle_player_msg(conn):
             conn.send("Got it".encode())
         except Exception:
             disconnect_client(conn)
-    elif msg not in ['1\n', '2\n', '3\n', '4\n', '5\n']:
+    elif msg not in ['1', '2', '3', '4', '5']:
         return
     else:
         strateg[conn] = msg

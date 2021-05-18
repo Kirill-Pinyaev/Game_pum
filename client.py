@@ -1,23 +1,13 @@
 import socket
-import sys
-import select
 
-
-server = socket.socket()
-server.bind(('localhost', 6666))
-server.listen(5)
-slov = {}
-while True:
-    clients = slov.keys()
-    conn, addr = server.accept()
-    sockets = [sys.stdin, server] + clients
-    print(sockets)
-    ins, _, _ = select.select(sockets, [], [], 0)
-    for i in ins:
-        if i is server:
-            slov[conn] = addr
-        else:
-            data = conn.recv(4)
-            if not data:
-                conn.close()
-                conn.send(b'hell')
+HOST = '192.168.1.68'
+PORT = 8008
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect((HOST, PORT))
+    while True:
+        data = s.recv(1024)
+        print('\nReceived: ', data.decode('utf-8'))
+        if 'strategy' in data.decode('utf-8'):
+            mess = input('\nEnter a strategy >>> ')
+            mess = mess.encode('utf-8')
+            s.sendall(mess)
