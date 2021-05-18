@@ -1,7 +1,7 @@
 import socket
 
 client = socket.socket()
-client.connect(('localhost', 8384))
+client.connect(('192.168.1.68', 8384))
 
 packet = bytearray([127, 0])
 

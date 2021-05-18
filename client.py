@@ -11,6 +11,7 @@ while True:
     clients = slov.keys()
     conn, addr = server.accept()
     sockets = [sys.stdin, server] + clients
+    print(sockets)
     ins, _, _ = select.select(sockets, [], [], 0)
     for i in ins:
         if i is server:

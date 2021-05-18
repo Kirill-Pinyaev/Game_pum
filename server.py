@@ -40,9 +40,7 @@ strateg = {}
 kash = {}
 
 # 4. Переменная сервера
-server = socket.socket()
-server.bind(('localhost', 6666))
-server.listen(CLIENTS_QUEUE_LEN)
+
 
 
 # Функция, отправляющая сообщение всем клиентам на сервере, а также выводящая его в консоль сервера
@@ -58,6 +56,7 @@ def broadcast(msg):
 # 1. Обновить значение переменной, которая хранит информацию о статусе игры
 # 2. Разослать уведомления всем игрокам
 def start_game():
+    global status
     status = 1
     broadcast("Let`s go! Choose your strategy for the first month:")
 
@@ -68,15 +67,17 @@ def start_game():
 # 3. Нужно оповестить других игроков о подключении нового клиента.
 # 4. Если набралось необходимое количество игроков, нужно вызвать функцию, начинающую игру.
 def connect_new_player():
-    global clients
-    conn, addr = server.accept()
+    global clients, count_klient, conn, inputs
+    new_conn, addr = conn.accept()
     if status == 1:
-        conn.send(b"Sorry, the game has been started")
-        conn.close()
+        new_conn.send(b"Sorry, the game has been started")
+        new_conn.close()
         return
     broadcast("Player {} connected".format(addr))
-    clients[conn] = addr
-    kash[conn] = 0
+    count_klient += 1
+    clients[new_conn] = addr
+    kash[new_conn] = 0
+    inputs.append(new_conn)
     if count_klient == PLAYERS_COUNT:
         start_game()
 
@@ -164,9 +165,10 @@ def send_game_info():
 
 
 def game_step():
-    global month
+    global month, strateg
     zagr_lake = update_balances()
     update_lake(zagr_lake)
+    strateg = {}
     if month == 40:
         finish_game()
         return
@@ -204,7 +206,6 @@ def disconnect_client(conn):
 #    Затем мы проверяем, все ли клиенты сделали выбор и, в зависимости от этого, делаем "игровой шаг"
 def handle_player_msg(conn):
     global strateg
-    strateg = {}
     try:
         msg = conn.recv(1024).decode()
     except Exception as err:
@@ -227,6 +228,13 @@ def handle_player_msg(conn):
         game_step()
 
 
+sock = socket.socket()
+sock.bind(('192.168.1.68', 8008))
+sock.listen(5)
+sock.setblocking(False)
+inputs = [sock]
+
+
 # Это основной цикл нашей программы, в нем мы должны ожидать и обрабатывать новые события
 # Цикл можно сделать бесконечным, можно ввести переменную-индикатор, отражающую статус игры
 while True:
@@ -235,10 +243,9 @@ while True:
     # Важно: в Windows-системах не удастся передать sys.stdin в select.select(), поэтому мы
     # ограничим количество игроков константой и будем стартовать игру, как только подключится
     # необходимое количество игроков.
-    sockets = clients.keys()
-    ins, _, _ = select.select(sockets, [], [], 0)
-    for i in ins:
-        if i in server:
+    ins, _, _ = select.select(inputs, [], [], 0)
+    for conn in ins:
+        if conn == sock:
             connect_new_player()
-    else:
-        handle_player_msg(i)
+        else:
+            handle_player_msg(conn)
