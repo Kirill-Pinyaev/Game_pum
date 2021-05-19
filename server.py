@@ -5,7 +5,7 @@ import socket
 from random import randint
 
 # Константы, задающие адрес и порт сервера, максимальную длину очереди и ожидаемое кол-во клиентов
-SERVER_ADDRESS = '192.168.1.68'
+SERVER_ADDRESS = 'localhost'
 SERVER_PORT = 8008
 CLIENTS_QUEUE_LEN = 15
 PLAYERS_COUNT = 1
@@ -39,6 +39,7 @@ pos_lake = 68
 strateg = {}
 kash = {}
 addres = []
+game_flag = False
 
 # 4. Переменная сервера
 
@@ -114,9 +115,15 @@ def update_balances():
         if strateg[i] == '3':
             kash[i] += 8
         if strateg[i] == '4':
-            kash[i] -= 8 // count_4
+            if count_4 == 0:
+                kash[i] -= 8
+            else:
+                kash[i] -= 8 // count_4
         if strateg[i] == '5':
-            kash[i] -= 8 // count_5
+            if count_5 == 0:
+                kash[i] -= 8
+            else:
+                kash[i] -= 8 // count_5
     return zagr_lake
 
 
@@ -141,13 +148,15 @@ def lake_random_cleaning():
 # Нужно пройтись по балансам всех клиентов, выбрать максимальный
 # и разослать сообщение о том, что игрок одержал победу
 def finish_game():
+    global game_flag
     maxx = 0
     key_1 = 0
     for key, vaule in kash.items():
         if vaule > maxx:
             maxx = vaule
             key_1 = key
-    broadcast("Player {} win".format(clients[key_1]))
+    broadcast("Player {} win".format(clients[key_1][0]))
+    game_flag = True
 
     # Функция, рассылающая всем игрокам актуальную игровую информацию.
     # Информация состоит из:
@@ -248,13 +257,14 @@ def handle_player_msg(conn):
 sock = socket.socket()
 sock.bind((SERVER_ADDRESS, SERVER_PORT))
 sock.listen(5)
-sock.setblocking(False)
 inputs = [sock]
 
 
 # Это основной цикл нашей программы, в нем мы должны ожидать и обрабатывать новые события
 # Цикл можно сделать бесконечным, можно ввести переменную-индикатор, отражающую статус игры
 while True:
+    if game_flag:
+        break
     # В данную переменную нужно положить список всех сокетов, на которых могут произойти события
     # Это все сокеты клиентов и сокет сервера
     # Важно: в Windows-системах не удастся передать sys.stdin в select.select(), поэтому мы
